@@ -1,0 +1,5 @@
+outs:
+- md5: ecc0e238af59d398d6735ed5a56af56c
+  size: 5606820741
+  hash: md5
+  path: rips.csv
