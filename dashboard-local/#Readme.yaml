@@ -1,0 +1,21 @@
+#Readme
+Para correr localmente el tablero deben hacer: 
+
+1. Paso 1 ingresar desde su maquina local a la carpeta de Github donde está el dashboard local
+cd dashboard-local
+2. Creamos un entorno virtual, esto evita que se dañe Python de la maquina ante fallas y se termine quemando el kernel
+python -m venv .venv
+3. Activamos entorno virtual. En este punto es clave tener en cuenta que la linea cambia, la versión está en Windows pero si es Ubuntu o Mac cambia
+.\.venv\Scripts\activate
+4. Instalar los requerimientos en el ambiente virtual
+pip install -r requirements.txt
+5. Correr la tabla
+python -m uvicorn main:app --reload
+
+Para iniciar el tablero, ingresan la url:
+
+Inicio: http://127.0.0.1:8000/
+
+Simulación: http://127.0.0.1:8000/simulacion
+
+Detalle: http://127.0.0.1:8000/detalle
