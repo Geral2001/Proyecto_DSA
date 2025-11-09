@@ -12,7 +12,7 @@ import random
 
 app = FastAPI(title="Muertes evitables – demo local")
 
-# Static & templates
+# templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
