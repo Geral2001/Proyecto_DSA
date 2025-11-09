@@ -2,10 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Demo local – Muertes evitables</title>
+  <title>Inicio · Demo local</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="/static/style.css" rel="stylesheet" />
-  <!-- Plotly desde CDN -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
@@ -14,27 +13,20 @@
     <div class="filters">
       <label>Año:&nbsp;<input id="year-input" type="number" min="2016" max="2030" value="{{ default_year }}"/></label>
       <button id="btn-apply">Aplicar</button>
+      <a class="link" href="/simulacion">Simulación</a>
+      <a class="link" href="/detalle">Detalle</a>
     </div>
   </header>
 
   <main class="grid">
     <section class="kpis">
-      <div class="kpi-card">
-        <div class="kpi-value" id="kpi1">—</div>
-        <div class="kpi-label">KPI 1: <a href="#" title="Muertes esperadas (12 meses)">Muertes esperadas (12 meses)</a></div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-value" id="kpi2">—</div>
-        <div class="kpi-label">KPI 2: <a href="#" title="Muertes evitables estimadas">Muertes evitables estimadas</a></div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-value" id="kpi3">—</div>
-        <div class="kpi-label">KPI 3: <a href="#" title="Tasa proyectada (x100k)">Tasa proyectada (x100k)</a></div>
-      </div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi1">—</div><div class="kpi-label">KPI 1: Muertes esperadas (12 meses)</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi2">—</div><div class="kpi-label">KPI 2: Muertes evitables estimadas</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpi3">—</div><div class="kpi-label">KPI 3: Tasa proyectada (x100k)</div></div>
     </section>
 
     <section class="panel heatmap">
-      <h3>Mapa por departamento (mosaico) — Tasa proyectada (x100k)</h3>
+      <h3>Mapa (mosaico) — Tasa proyectada (x100k)</h3>
       <div id="heatmap"></div>
       <p class="hint">Tooltip: tasa base, tasa proyectada, muertes evitables.</p>
     </section>
@@ -44,9 +36,7 @@
       <div class="table-wrap">
         <table id="detail-table">
           <thead>
-            <tr>
-              <th>Departamento</th><th>Tasa base</th><th>Tasa proyectada</th><th>Muertes evitables</th>
-            </tr>
+            <tr><th>Departamento</th><th>Tasa base</th><th>Tasa proyectada</th><th>Muertes evitables</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -54,7 +44,7 @@
     </section>
 
     <section class="panel barchart">
-      <h3>Top-10 departamentos por muertes evitables</h3>
+      <h3>Top-10 por muertes evitables</h3>
       <div id="bar"></div>
     </section>
   </main>
@@ -62,6 +52,9 @@
   <script>
     async function loadAll() {
       const year = document.getElementById("year-input").value;
+      const elK1 = document.getElementById("kpi1");
+      const elK2 = document.getElementById("kpi2");
+      const elK3 = document.getElementById("kpi3");
 
       const [metrics, grid, top] = await Promise.all([
         fetch(`/api/metrics?year=${year}`).then(r => r.json()),
@@ -69,22 +62,16 @@
         fetch(`/api/top10?year=${year}`).then(r => r.json())
       ]);
 
-      // KPIs
-      document.getElementById("kpi1").textContent = metrics.kpi1_muertes_esperadas_12m.toLocaleString("es-CO");
-      document.getElementById("kpi2").textContent = metrics.kpi2_muertes_evitables_estimadas.toLocaleString("es-CO");
-      document.getElementById("kpi3").textContent = metrics.kpi3_tasa_proyectada_x100k.toLocaleString("es-CO");
+      elK1.textContent = metrics.kpi1_muertes_esperadas_12m.toLocaleString("es-CO");
+      elK2.textContent = metrics.kpi2_muertes_evitables_estimadas.toLocaleString("es-CO");
+      elK3.textContent = metrics.kpi3_tasa_proyectada_x100k.toLocaleString("es-CO");
 
-      // Heatmap mosaico
       const rows = grid.rows, cols = grid.cols;
       const z = Array.from({length: rows}, () => Array(cols).fill(null));
       const text = Array.from({length: rows}, () => Array(cols).fill(""));
-      grid.heat.forEach(d => {
-        z[d.row][d.col] = d.tasa_proyectada_x100k;
-      });
-      // tooltips compuestos
+      grid.heat.forEach(d => { z[d.row][d.col] = d.tasa_proyectada_x100k; });
       grid.table.forEach((d, i) => {
-        const h = grid.heat[i];
-        if (!h) return;
+        const h = grid.heat[i]; if (!h) return;
         text[h.row][h.col] = `<b>${d.departamento}</b><br>` +
           `Tasa base: ${Number(d.tasa_base_x100k).toFixed(1)}<br>` +
           `Tasa proyectada: ${Number(d.tasa_proyectada_x100k).toFixed(1)}<br>` +
@@ -94,40 +81,31 @@
       Plotly.newPlot("heatmap", [{
         z: z, type: "heatmap", hoverinfo: "text", text: text, xgap: 2, ygap: 2,
         colorscale: "Viridis", reversescale: false, showscale: true
-      }], {
-        margin: {l: 30, r: 10, t: 10, b: 30},
-        yaxis: {autorange: "reversed"}
-      }, {displayModeBar: false});
+      }], { margin: {l: 30, r: 10, t: 10, b: 30}, yaxis: {autorange: "reversed"} },
+         {displayModeBar: false});
 
-      // Tabla detalle
       const tbody = document.querySelector("#detail-table tbody");
       tbody.innerHTML = "";
       grid.table.forEach(d => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${d.departamento}</td>
+        tr.innerHTML = `<td>${d.departamento}</td>
           <td style="text-align:right">${Number(d.tasa_base_x100k).toFixed(1)}</td>
           <td style="text-align:right">${Number(d.tasa_proyectada_x100k).toFixed(1)}</td>
-          <td style="text-align:right">${Number(d.muertes_evitables_estimadas).toLocaleString("es-CO")}</td>
-        `;
+          <td style="text-align:right">${Number(d.muertes_evitables_estimadas).toLocaleString("es-CO")}</td>`;
         tbody.appendChild(tr);
       });
 
-      // Barras Top-10
       Plotly.newPlot("bar", [{
         x: top.valores.slice().reverse(),
         y: top.departamentos.slice().reverse(),
-        type: "bar",
-        orientation: "h",
+        type: "bar", orientation: "h",
         hovertemplate: "<b>%{y}</b><br>Muertes evitables: %{x:,}<extra></extra>"
-      }], {
-        margin: {l: 120, r: 10, t: 10, b: 40}
-      }, {displayModeBar: false});
+      }], { margin: {l: 120, r: 10, t: 10, b: 40} }, {displayModeBar: false});
     }
 
     document.getElementById("btn-apply").addEventListener("click", loadAll);
-    // carga inicial
     loadAll();
   </script>
 </body>
 </html>
+
