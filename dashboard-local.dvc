@@ -1,6 +1,0 @@
-outs:
-- md5: 7b7effeede7c1820f76a479c6e28ac90.dir
-  size: 23628
-  nfiles: 7
-  hash: md5
-  path: dashboard-local
