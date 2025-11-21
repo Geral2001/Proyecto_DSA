@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Histórico · {{ dep_name }} ({{ dep_code }})</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/static/style.css" rel="stylesheet" />
+  <!-- Chart.js desde CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      Histórico de predicciones · {{ dep_name }} ({{ dep_code }})
+    </div>
+    <div class="subtitle">
+      Serie mensual de predicciones del modelo HGB Poisson. 
+      <a href="/" style="margin-left: 1rem; text-decoration: underline;">← Volver a la vista principal</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <h2>Predicción mensual de muertes</h2>
+      <p class="hint">
+        Cada punto corresponde a un mes (AÑO-MES) para el departamento seleccionado. 
+        Los valores son la predicción del modelo HGB Poisson usando el panel de defunciones.
+      </p>
+      <canvas id="muertesChart" style="max-height: 420px;"></canvas>
+    </section>
+
+    <section class="card">
+      <h2>Datos crudos</h2>
+      <pre id="raw-json" class="json-box"></pre>
+    </section>
+  </main>
+
+  <script>
+    const depCode = "{{ dep_code }}";
+
+    async function cargarHistorico() {
+      const resp = await fetch(`/api/historico/${depCode}`);
+      const rawBox = document.getElementById("raw-json");
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        rawBox.textContent = `Error ${resp.status}: ${JSON.stringify(err.detail ?? err)}`;
+        return;
+      }
+
+      const data = await resp.json();
+      rawBox.textContent = JSON.stringify(data, null, 2);
+
+      const labels = data.serie.map(d => d.periodo);
+      const values = data.serie.map(d => d.pred);
+
+      const ctx = document.getElementById("muertesChart").getContext("2d");
+
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `Predicción de muertes · ${data.departamento_nombre} (${data.departamento_codigo})`,
+            data: values,
+            tension: 0.2,
+            pointRadius: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 12,
+              }
+            },
+            y: {
+              beginAtZero: false
+            }
+          },
+          plugins: {
+            legend: {
+              display: true
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const v = context.parsed.y;
+                  return ` ${v.toLocaleString("es-CO", {maximumFractionDigits: 1})} muertes`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    cargarHistorico();
+  </script>
+</body>
+</html>

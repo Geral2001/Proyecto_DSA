@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Predicción de muertes · Modelo HGB Poisson</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/static/style.css" rel="stylesheet" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      Predicción de muertes evitables · Modelo HGB Poisson
+    </div>
+    <div class="subtitle">
+      Despliegue de Soluciones Anlíticas · Ingrese un departamento y un periodo para ver la predicción puntual o el histórico.
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- PANEL DE FILTROS -->
+    <section class="card filters-card">
+      <h2>Parámetros de consulta</h2>
+      <div class="filters-row">
+        <label>
+          Departamento
+          <select id="dpto-select">
+            {% for d in departamentos %}
+              <option value="{{ d.code }}">{{ d.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>
+          Año
+          <input id="year-input" type="number" min="1990" max="2100" value="{{ default_year }}" />
+        </label>
+
+        <label>
+          Mes
+          <input id="month-input" type="number" min="1" max="12" value="1" />
+        </label>
+
+        <button id="btn-predict">Calcular predicción</button>
+        <button id="btn-historico" class="secondary">Ver histórico</button>
+      </div>
+      <p class="hint">
+        Los códigos de departamento se usan internamente, pero aquí se muestran con su nombre oficial DANE.
+      </p>
+    </section>
+
+    <!-- KPIS -->
+    <section class="kpis">
+      <div class="kpi-card">
+        <div class="kpi-label">Departamento</div>
+        <div class="kpi-value" id="kpi-dep">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Periodo</div>
+        <div class="kpi-value" id="kpi-periodo">—</div>
+      </div>
+      <div class="kpi-card kpi-main">
+        <div class="kpi-label">Predicción de muertes</div>
+        <div class="kpi-value" id="kpi-pred">—</div>
+      </div>
+    </section>
+
+    <!-- DETALLE -->
+    <section class="card">
+      <h2>Detalle de la respuesta del modelo</h2>
+      <p id="detalle-text" class="hint">
+        Selecciona un departamento, año y mes, luego haz clic en <b>Calcular predicción</b>.
+      </p>
+      <pre id="raw-json" class="json-box"></pre>
+    </section>
+
+  </main>
+
+  <script>
+    function getSelectedDeptoLabel() {
+      const sel = document.getElementById("dpto-select");
+      return sel.options[sel.selectedIndex].text;
+    }
+
+    async function hacerPrediccion() {
+      const depCode = document.getElementById("dpto-select").value;
+      const depLabel = getSelectedDeptoLabel();
+      const ano = Number(document.getElementById("year-input").value);
+      const mes = Number(document.getElementById("month-input").value);
+
+      const body = { departamento: depCode, ano: ano, mes: mes };
+
+      const resp = await fetch("/predict", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
+      });
+
+      const kDep = document.getElementById("kpi-dep");
+      const kPer = document.getElementById("kpi-periodo");
+      const kPred = document.getElementById("kpi-pred");
+      const detalle = document.getElementById("detalle-text");
+      const raw = document.getElementById("raw-json");
+
+      kDep.textContent = depLabel;
+      kPer.textContent = `${ano}-${String(mes).padStart(2, "0")}`;
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        kPred.textContent = "—";
+        detalle.textContent = `Error ${resp.status}: ${JSON.stringify(err.detail ?? err)}`;
+        raw.textContent = "";
+        return;
+      }
+
+      const data = await resp.json();
+      const pred = data.prediction_muertes ?? data.prediction ?? null;
+
+      kPred.textContent = pred !== null
+        ? pred.toLocaleString("es-CO", {maximumFractionDigits: 1})
+        : "—";
+
+      detalle.textContent = "Respuesta completa del modelo (JSON):";
+      raw.textContent = JSON.stringify(data, null, 2);
+    }
+
+    function irAHistorico() {
+      const depCode = document.getElementById("dpto-select").value;
+      window.location.href = `/historico/${depCode}`;
+    }
+
+    document.getElementById("btn-predict").addEventListener("click", hacerPrediccion);
+    document.getElementById("btn-historico").addEventListener("click", irAHistorico);
+  </script>
+</body>
+</html>

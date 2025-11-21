@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Simulación · Muertes evitables</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/static/style.css" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">SIMULACIÓN · Escenarios de inversión y cobertura</div>
+    <div class="filters">
+      <label>
+        Año:&nbsp;
+        <input id="year-input" type="number" min="2000" max="2100" value="{{ default_year }}"/>
+      </label>
+      <a class="link" href="/">Inicio</a>
+    </div>
+  </header>
+
+  <main class="grid" style="grid-template-areas:
+    'ctrl1 ctrl2 summary'
+    'bar bar bar';
+    grid-template-columns: 1fr 1fr 1.2fr;">
+    <section class="panel" style="grid-area:ctrl1">
+      <h3>Control 1: % de inversión</h3>
+      <div id="inv-buttons" class="btn-row"></div>
+      <div class="hint">-30, -20, -10, 0, +10, +20, +30</div>
+    </section>
+
+    <section class="panel" style="grid-area:ctrl2">
+      <h3>Control 2: % de cobertura preventiva</h3>
+      <div id="cov-buttons" class="btn-row"></div>
+      <div class="hint">-30, -20, -10, 0, +10, +20, +30</div>
+    </section>
+
+    <section class="panel" style="grid-area:summary">
+      <h3>Resumen nacional: KPIs recalculados</h3>
+      <div id="resumen" class="kpi-summary"></div>
+    </section>
+
+    <section class="panel barchart" style="grid-area:bar">
+      <h3>Ranking Top-10 de muertes evitables (escenario vs base)</h3>
+      <div id="bar"></div>
+    </section>
+  </main>
+
+  <script>
+    const CHOICES = [-30,-20,-10,0,10,20,30];
+    let selInv = 0, selCov = 0;
+
+    function renderButtons(containerId, onClick, selected){
+      const el = document.getElementById(containerId);
+      el.innerHTML = "";
+      CHOICES.forEach(v=>{
+        const b = document.createElement("button");
+        b.textContent = (v>0 ? "+"+v : ""+v);
+        if (v === selected) b.classList.add("btn-active");
+        b.addEventListener("click", ()=> onClick(v));
+        el.appendChild(b);
+      });
+    }
+
+    async function loadSim(){
+      const year = document.getElementById("year-input").value;
+      const resp = await fetch(`/api/sim?year=${year}&inv=${selInv}&cov=${selCov}`);
+      const data = await resp.json();
+
+      const elResumen = document.getElementById("resumen");
+      const r = data.resumen;
+
+      elResumen.innerHTML = `
+        <div><b>Escenario:</b> Inversión ${r.escenario.inversion_pct}%, Cobertura ${r.escenario.cobertura_pct}%</div>
+        <ul>
+          <li>Muertes esperadas (12 m): <b>${r.kpi1_muertes_esperadas_12m.toLocaleString("es-CO")}</b></li>
+          <li>Muertes evitables (estimadas): <b>${r.kpi2_muertes_evitables_estimadas.toLocaleString("es-CO")}</b></li>
+          <li>Tasa proyectada (x100k hab.): <b>${r.kpi3_tasa_proyectada_x100k.toFixed(2)}</b></li>
+        </ul>`;
+
+      const top = data.top10;
+      Plotly.newPlot("bar", [{
+        x: top.valores.slice().reverse(),
+        y: top.departamentos.slice().reverse(),
+        type:"bar",
+        orientation:"h",
+        hovertemplate:"<b>%{y}</b><br>Muertes evitables (sim): %{x:,}<extra></extra>"
+      }], {
+        margin:{l:180,r:10,t:10,b:40}
+      }, {displayModeBar:false});
+    }
+
+    function onInv(v){ selInv=v; renderButtons("inv-buttons", onInv, selInv); loadSim(); }
+    function onCov(v){ selCov=v; renderButtons("cov-buttons", onCov, selCov); loadSim(); }
+
+    renderButtons("inv-buttons", onInv, selInv);
+    renderButtons("cov-buttons", onCov, selCov);
+    loadSim();
+  </script>
+</body>
+</html>
