@@ -1,0 +1,10 @@
+{
+  "parquet_limpio": "outputs_fase2\\df_limpio.parquet",
+  "diccionario_csv": "outputs_fase2\\diccionario_datos_fase2.csv",
+  "graficos": [
+    "completitud_post_limpieza.png",
+    "top_causas_homologadas.png (si aplica)",
+    "top_manera_muerte.png (si aplica)",
+    "serie_mensual_registros.png (si aplica)"
+  ]
+}
